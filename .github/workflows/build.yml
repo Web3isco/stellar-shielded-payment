@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Noir
+        run: |
+          curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
+          export PATH="$HOME/.nargo/bin:$PATH"
+          noirup
+          echo "$HOME/.nargo/bin" >> $GITHUB_PATH
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: wasm32-unknown-unknown
+
+      - name: Install Stellar CLI
+        run: |
+          curl -L -o stellar.tar.gz https://github.com/stellar/stellar-cli/releases/download/v27.0.0/stellar-cli-27.0.0-x86_64-unknown-linux-gnu.tar.gz
+          tar xzf stellar.tar.gz
+          sudo mv stellar /usr/local/bin/
+          rm stellar.tar.gz
+
+      - name: Compile Noir circuit
+        run: |
+          cd circuits/shielded_payment
+          nargo compile
+
+      - name: Build Soroban contract
+        run: |
+          cd contracts/shielded-payment
+          cargo build --target wasm32-unknown-unknown --release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-outputs
+          path: |
+            circuits/target/shielded_payment.json
+            contracts/target/wasm32-unknown-unknown/release/shielded_payment.wasm
