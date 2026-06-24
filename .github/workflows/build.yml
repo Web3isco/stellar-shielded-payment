@@ -18,6 +18,7 @@ jobs:
           export PATH="$HOME/.nargo/bin:$PATH"
           noirup
           echo "$HOME/.nargo/bin" >> $GITHUB_PATH
+          nargo --version
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -34,7 +35,8 @@ jobs:
       - name: Compile Noir circuit
         run: |
           cd circuits/shielded_payment
-          nargo compile
+          nargo check 2>&1
+          nargo compile 2>&1
 
       - name: Build Soroban contract
         run: |
