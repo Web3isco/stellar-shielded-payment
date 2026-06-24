@@ -2,7 +2,7 @@
 
 mod merkle;
 
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, vec, Address, BytesN, Env, IntoVal, Symbol, Val, Vec};
 
 const TOKEN: Symbol = symbol_short!("token");
 const NEXT_INDEX: Symbol = symbol_short!("next_idx");
@@ -55,7 +55,8 @@ impl ShieldedPayment {
             .instance()
             .set(&NEXT_INDEX, &(count + 1));
 
-        env.events().publish(("deposit",), (commitment, amount));
+        env.events()
+            .publish((symbol_short!("deposit"),), vec![&env, commitment.into_val(&env), amount.into_val(&env)]);
     }
 
     /// Withdraw from the pool.
@@ -113,7 +114,7 @@ impl ShieldedPayment {
         client.transfer(&env.current_contract_address(), recipient, &amount);
 
         env.events()
-            .publish(("withdraw",), (nullifier, recipient, amount));
+            .publish((symbol_short!("withdraw"),), vec![&env, nullifier.into_val(&env), recipient.into_val(&env), amount.into_val(&env)]);
     }
 
     /// Store a verifying key for a Groth16 verifier (optional, for full on-chain ZK).
