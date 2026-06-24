@@ -2,30 +2,57 @@
 
 mod merkle;
 
-use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, BytesN, Env, IntoVal, Symbol, Vec, Val};
+use soroban_sdk::{
+    contract, contractimpl, contracttype, symbol_short, Address, Bytes, BytesN, Env, Event,
+    IntoVal, Symbol, Val, Vec,
+};
 
 const TOKEN: Symbol = symbol_short!("token");
 const NEXT_INDEX: Symbol = symbol_short!("next_idx");
 
 #[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NullifierWrapper {
     pub val: BytesN<32>,
 }
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DepositEvent {
     pub commitment: BytesN<32>,
     pub amount: i128,
 }
 
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WithdrawEvent {
     pub nullifier: BytesN<32>,
     pub recipient: Address,
     pub amount: i128,
+}
+
+impl Event for DepositEvent {
+    fn topics(&self, env: &Env) -> Vec<Val> {
+        let mut v = Vec::new(env);
+        v.push_back(symbol_short!("deposit").into_val(env));
+        v
+    }
+    fn data(&self, env: &Env) -> Val {
+        let mut v = Vec::new(env);
+        v.push_back(self.commitment.to_val());
+        v.push_back((&self.amount).into_val(env));
+        v.to_val()
+    }
+}
+
+impl Event for WithdrawEvent {
+    fn topics(&self, env: &Env) -> Vec<Val> {
+        let mut v = Vec::new(env);
+        v.push_back(symbol_short!("withdraw").into_val(env));
+        v
+    }
+    fn data(&self, env: &Env) -> Val {
+        let mut v = Vec::new(env);
+        v.push_back(self.nullifier.to_val());
+        v.push_back(self.recipient.to_val());
+        v.push_back((&self.amount).into_val(env));
+        v.to_val()
+    }
 }
 
 #[contract]
@@ -70,12 +97,12 @@ impl ShieldedPayment {
             .instance()
             .set(&NEXT_INDEX, &(count + 1));
 
-        // Publish deposit event manually (avoiding #[contractevent] macro due to SDK 27 rc.1 incompatibilities)
-        let mut data = Vec::new(&env);
-        data.push_back(commitment.to_val());
-        let amount_val: Val = (&amount).into_val(&env);
-        data.push_back(amount_val);
-        env.events().publish((symbol_short!("deposit"),), data);
+        // Publish deposit event
+        DepositEvent {
+            commitment,
+            amount,
+        }
+        .publish(&env);
     }
 
     /// Withdraw from the pool.
@@ -132,19 +159,17 @@ impl ShieldedPayment {
         let client = soroban_sdk::token::TokenClient::new(&env, &token);
         client.transfer(&env.current_contract_address(), recipient.clone(), &amount);
 
-        // Publish withdraw event manually
-        let mut data = Vec::new(&env);
-        data.push_back(nullifier.to_val());
-        data.push_back(recipient.to_val());
-        let amount_val: Val = (&amount).into_val(&env);
-        data.push_back(amount_val);
-        env.events().publish((symbol_short!("withdraw"),), data);
+        // Publish withdraw event
+        WithdrawEvent {
+            nullifier,
+            recipient,
+            amount,
+        }
+        .publish(&env);
     }
 
     /// Store a verifying key for a Groth16 verifier (optional, for full on-chain ZK).
-    pub fn set_verifying_key(env: Env, vk: Vec<u8>) {
-        // In a full implementation, this stores the Groth16 VK
-        // and the withdraw function additionally verifies the ZK proof
+    pub fn set_verifying_key(env: Env, vk: Bytes) {
         env.storage().instance().set(&Symbol::new(&env, "vk"), &vk);
     }
 
