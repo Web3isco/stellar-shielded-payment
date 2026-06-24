@@ -4,13 +4,14 @@ mod merkle;
 
 use soroban_sdk::{
     contract, contractimpl, contracttype, symbol_short, Address, Bytes, BytesN, Env, Event,
-    IntoVal, Symbol, Val, Vec,
+    IntoVal, MuxedAddress, Symbol, Val, Vec,
 };
 
 const TOKEN: Symbol = symbol_short!("token");
 const NEXT_INDEX: Symbol = symbol_short!("next_idx");
 
 #[contracttype]
+#[derive(Clone)]
 pub struct NullifierWrapper {
     pub val: BytesN<32>,
 }
@@ -76,7 +77,7 @@ impl ShieldedPayment {
 
         // Transfer tokens to contract
         let client = soroban_sdk::token::TokenClient::new(&env, &token);
-        client.transfer(&from, env.current_contract_address(), &amount);
+        client.transfer(&from, &MuxedAddress::from(env.current_contract_address()), &amount);
 
         // Append commitment to tree
         let mut commitments: Vec<BytesN<32>> = env
@@ -157,7 +158,7 @@ impl ShieldedPayment {
         // Transfer tokens
         let token: Address = env.storage().instance().get(&TOKEN).unwrap();
         let client = soroban_sdk::token::TokenClient::new(&env, &token);
-        client.transfer(&env.current_contract_address(), recipient.clone(), &amount);
+        client.transfer(&env.current_contract_address(), &MuxedAddress::from(recipient.clone()), &amount);
 
         // Publish withdraw event
         WithdrawEvent {
