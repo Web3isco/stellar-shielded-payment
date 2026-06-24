@@ -16,7 +16,7 @@ jobs:
         run: |
           curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
           export PATH="$HOME/.nargo/bin:$PATH"
-          noirup
+          noirup -v 1.0.0-beta.22
           echo "$HOME/.nargo/bin" >> $GITHUB_PATH
           nargo --version
 

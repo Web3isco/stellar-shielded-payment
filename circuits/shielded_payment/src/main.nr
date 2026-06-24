@@ -26,7 +26,7 @@ fn main(
 
 fn compute_merkle_root(leaf: Field, index: Field, path: [Field; 10]) -> Field {
     let mut current = leaf;
-    let mut idx = index;
+    let mut idx: u64 = index as u64;
 
     for i in 0..10 {
         let sibling = path[i];
