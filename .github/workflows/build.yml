@@ -16,9 +16,9 @@ jobs:
         run: |
           curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
           export PATH="$HOME/.nargo/bin:$PATH"
-          noirup -v 1.0.0-beta.22
-          echo "$HOME/.nargo/bin" >> $GITHUB_PATH
+          noirup -v v1.0.0-beta.22
           nargo --version
+          echo "$HOME/.nargo/bin" >> $GITHUB_PATH
 
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -34,9 +34,10 @@ jobs:
 
       - name: Compile Noir circuit
         run: |
+          which nargo
+          nargo --version
           cd circuits/shielded_payment
-          nargo check 2>&1
-          nargo compile 2>&1
+          nargo compile
 
       - name: Build Soroban contract
         run: |
