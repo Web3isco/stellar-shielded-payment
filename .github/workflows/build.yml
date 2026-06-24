@@ -11,6 +11,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install Noir
         run: |
@@ -54,15 +56,10 @@ jobs:
       - name: Emit build errors as annotations
         if: failure()
         run: |
-          # Dump the first 5 error lines as annotations
-          grep -a 'error' $HOME/build.log | head -5 | while IFS= read -r line; do
-            echo "::error file=contract,title=Rust Error::$line"
+          grep -a 'failed to run custom build command' $HOME/build.log | head -5 | while IFS= read -r line; do
+            echo "::error file=build.log,title=Build Script Error::$line"
           done
-          # Dump last 20 lines
-          echo "=== Last 20 lines ==="
-          tail -20 $HOME/build.log
-          echo "=== File size ==="
-          wc -l $HOME/build.log
+          tail -10 $HOME/build.log
 
       - name: Upload artifacts
         if: success()
