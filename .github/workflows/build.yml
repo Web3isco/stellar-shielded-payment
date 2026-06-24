@@ -16,7 +16,7 @@ jobs:
         run: |
           curl -L https://raw.githubusercontent.com/noir-lang/noirup/main/install | bash
           export PATH="$HOME/.nargo/bin:$PATH"
-          noirup -v v1.0.0-beta.22
+          noirup
           nargo --version
           echo "$HOME/.nargo/bin" >> $GITHUB_PATH
 
@@ -34,10 +34,9 @@ jobs:
 
       - name: Compile Noir circuit
         run: |
-          which nargo
           nargo --version
           cd circuits/shielded_payment
-          nargo compile
+          nargo compile 2>&1
 
       - name: Build Soroban contract
         run: |
