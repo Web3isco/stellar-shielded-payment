@@ -51,6 +51,13 @@ jobs:
           name: build-error-log
           path: ~/build.log
 
+      - name: Emit build errors as annotations
+        if: failure()
+        run: |
+          grep -E '^error(\[|:)' $HOME/build.log | head -20 | while IFS= read -r line; do
+            echo "::error::cargo: $line"
+          done
+
       - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
