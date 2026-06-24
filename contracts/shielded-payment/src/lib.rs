@@ -34,7 +34,7 @@ impl ShieldedPayment {
 
         // Transfer tokens to contract
         let client = soroban_sdk::token::TokenClient::new(&env, &token);
-        client.transfer(&from, &env.current_contract_address(), &amount);
+        client.transfer(&from, env.current_contract_address(), &amount);
 
         // Append commitment to tree
         let mut commitments: Vec<BytesN<32>> = env
@@ -110,7 +110,7 @@ impl ShieldedPayment {
         // Transfer tokens
         let token: Address = env.storage().instance().get(&TOKEN).unwrap();
         let client = soroban_sdk::token::TokenClient::new(&env, &token);
-        client.transfer(&env.current_contract_address(), &recipient, &amount);
+        client.transfer(&env.current_contract_address(), recipient, &amount);
 
         env.events()
             .publish(("withdraw",), (nullifier, recipient, amount));
