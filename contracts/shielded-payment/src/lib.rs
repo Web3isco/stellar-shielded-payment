@@ -2,7 +2,7 @@
 
 mod merkle;
 
-use soroban_sdk::{contract, contractimpl, contractevent, contracttype, symbol_short, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, BytesN, Env, IntoVal, Symbol, Vec, Val};
 
 const TOKEN: Symbol = symbol_short!("token");
 const NEXT_INDEX: Symbol = symbol_short!("next_idx");
@@ -13,14 +13,14 @@ pub struct NullifierWrapper {
     pub val: BytesN<32>,
 }
 
-#[contractevent(topics = ["deposit"], data_format = "vec")]
+#[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DepositEvent {
     pub commitment: BytesN<32>,
     pub amount: i128,
 }
 
-#[contractevent(topics = ["withdraw"], data_format = "vec")]
+#[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WithdrawEvent {
     pub nullifier: BytesN<32>,
@@ -70,7 +70,12 @@ impl ShieldedPayment {
             .instance()
             .set(&NEXT_INDEX, &(count + 1));
 
-        DepositEvent { commitment, amount }.publish(&env);
+        // Publish deposit event manually (avoiding #[contractevent] macro due to SDK 27 rc.1 incompatibilities)
+        let mut data = Vec::new(&env);
+        data.push_back(commitment.to_val());
+        let amount_val: Val = (&amount).into_val(&env);
+        data.push_back(amount_val);
+        env.events().publish((symbol_short!("deposit"),), data);
     }
 
     /// Withdraw from the pool.
@@ -125,9 +130,15 @@ impl ShieldedPayment {
         // Transfer tokens
         let token: Address = env.storage().instance().get(&TOKEN).unwrap();
         let client = soroban_sdk::token::TokenClient::new(&env, &token);
-        client.transfer(&env.current_contract_address(), recipient, &amount);
+        client.transfer(&env.current_contract_address(), recipient.clone(), &amount);
 
-        WithdrawEvent { nullifier, recipient, amount }.publish(&env);
+        // Publish withdraw event manually
+        let mut data = Vec::new(&env);
+        data.push_back(nullifier.to_val());
+        data.push_back(recipient.to_val());
+        let amount_val: Val = (&amount).into_val(&env);
+        data.push_back(amount_val);
+        env.events().publish((symbol_short!("withdraw"),), data);
     }
 
     /// Store a verifying key for a Groth16 verifier (optional, for full on-chain ZK).
