@@ -41,9 +41,18 @@ jobs:
       - name: Build Soroban contract
         run: |
           cd contracts/shielded-payment
-          cargo build --target wasm32-unknown-unknown --release
+          cargo build --target wasm32-unknown-unknown --release 2>&1 | tee $HOME/build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Upload build error log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-error-log
+          path: ~/build.log
 
       - name: Upload artifacts
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: build-outputs

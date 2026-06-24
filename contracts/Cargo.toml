@@ -1,3 +1,9 @@
 [workspace]
 resolver = "2"
 members = ["shielded-payment"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+debug = false
+strip = true
