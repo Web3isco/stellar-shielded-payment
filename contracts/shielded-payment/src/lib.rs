@@ -2,13 +2,10 @@
 
 mod merkle;
 
-use soroban_sdk::{contract, contractimpl, contracttype, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, BytesN, Env, Symbol, Vec};
 
-const TOKEN: Symbol = Symbol::new("token");
-const NEXT_INDEX: Symbol = Symbol::new("next_idx");
-const MERKLE_ROOT: Symbol = Symbol::new("merkle_root");
-const COMMITMENTS: Symbol = Symbol::new("commitments");
-const SPENT: Symbol = Symbol::new("spent_null");
+const TOKEN: Symbol = symbol_short!("token");
+const NEXT_INDEX: Symbol = symbol_short!("next_idx");
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -27,7 +24,7 @@ impl ShieldedPayment {
         // empty root
         env.storage()
             .instance()
-            .set(&MERKLE_ROOT, &BytesN::from_array(&env, &[0u8; 32]));
+            .set(&Symbol::new(&env, "merkle_root"), &BytesN::from_array(&env, &[0u8; 32]));
     }
 
     pub fn deposit(env: Env, from: Address, commitment: BytesN<32>, amount: i128) {
@@ -36,21 +33,21 @@ impl ShieldedPayment {
         let token: Address = env.storage().instance().get(&TOKEN).unwrap();
 
         // Transfer tokens to contract
-        let client = soroban_sdk::token::Client::new(&env, &token);
+        let client = soroban_sdk::token::TokenClient::new(&env, &token);
         client.transfer(&from, &env.current_contract_address(), &amount);
 
         // Append commitment to tree
         let mut commitments: Vec<BytesN<32>> = env
             .storage()
             .instance()
-            .get(&COMMITMENTS)
+            .get(&Symbol::new(&env, "commitments"))
             .unwrap_or(Vec::new(&env));
         commitments.push_back(commitment.clone());
-        env.storage().instance().set(&COMMITMENTS, &commitments);
+        env.storage().instance().set(&Symbol::new(&env, "commitments"), &commitments);
 
         // Recompute Merkle root
         let root = merkle::compute_root(&env, &commitments);
-        env.storage().instance().set(&MERKLE_ROOT, &root);
+        env.storage().instance().set(&Symbol::new(&env, "merkle_root"), &root);
 
         // Increment count
         let count: u64 = env.storage().instance().get(&NEXT_INDEX).unwrap();
@@ -89,7 +86,7 @@ impl ShieldedPayment {
         let spent: Vec<NullifierWrapper> = env
             .storage()
             .instance()
-            .get(&SPENT)
+            .get(&Symbol::new(&env, "spent_null"))
             .unwrap_or(Vec::new(&env));
         for n in spent.iter() {
             if n.val == nullifier {
@@ -98,7 +95,7 @@ impl ShieldedPayment {
         }
 
         // Verify Merkle proof
-        let root: BytesN<32> = env.storage().instance().get(&MERKLE_ROOT).unwrap();
+        let root: BytesN<32> = env.storage().instance().get(&Symbol::new(&env, "merkle_root")).unwrap();
         if !merkle::verify(&env, &commitment, &path_index, &merkle_proof, &root) {
             panic!("merkle proof invalid");
         }
@@ -108,11 +105,11 @@ impl ShieldedPayment {
         spent.push_back(NullifierWrapper {
             val: nullifier.clone(),
         });
-        env.storage().instance().set(&SPENT, &spent);
+        env.storage().instance().set(&Symbol::new(&env, "spent_null"), &spent);
 
         // Transfer tokens
         let token: Address = env.storage().instance().get(&TOKEN).unwrap();
-        let client = soroban_sdk::token::Client::new(&env, &token);
+        let client = soroban_sdk::token::TokenClient::new(&env, &token);
         client.transfer(&env.current_contract_address(), &recipient, &amount);
 
         env.events()
@@ -129,7 +126,7 @@ impl ShieldedPayment {
     pub fn get_merkle_root(env: Env) -> BytesN<32> {
         env.storage()
             .instance()
-            .get(&MERKLE_ROOT)
+            .get(&Symbol::new(&env, "merkle_root"))
             .unwrap_or(BytesN::from_array(&env, &[0u8; 32]))
     }
 
@@ -144,7 +141,7 @@ impl ShieldedPayment {
         let spent: Vec<NullifierWrapper> = env
             .storage()
             .instance()
-            .get(&SPENT)
+            .get(&Symbol::new(&env, "spent_null"))
             .unwrap_or(Vec::new(&env));
         for n in spent.iter() {
             if n.val == nullifier {
